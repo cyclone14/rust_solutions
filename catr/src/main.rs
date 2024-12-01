@@ -40,22 +40,21 @@ fn run(args: Args) -> Result<()> {
         // println!("{filename}");
         match open(&filename) {
             Err(err) => eprintln!("Failed to open {filename}: {err}"),
-            Ok(f) => {
-                let mut line_no = 1;
-                for line in f.lines() {
+            Ok(file) => {
+                let mut prev_num = 0; // used to count the non-blank lines
+                for (line_num, line_result) in file.lines().enumerate() {
+                    let line = line_result?;
                     if args.number_lines {
-                        println!("{line_no:>6}\t{}", line.unwrap());
-                        line_no += 1;
+                        println!("{:>6}\t{line}", line_num + 1);
                     } else if args.number_nonblank_lines {
-                        let line_actual = line.unwrap();
-                        if line_actual.is_empty() {
-                            println!("");
+                        if line.is_empty() {
+                            println!();
                         } else {
-                            println!("{line_no:>6}\t{}", line_actual);
-                            line_no += 1;
+                            prev_num += 1;
+                            println!("{prev_num:>6}\t{line}");
                         }
                     } else {
-                        println!("{}", line.unwrap());
+                        println!("{line}");
                     }
                 }
             },
