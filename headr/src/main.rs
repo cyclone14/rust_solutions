@@ -1,7 +1,7 @@
 use clap::Parser;
 use anyhow::Result;
 use std::fs::File;
-use std::io::{self, BufRead, BufReader};
+use std::io::{self, BufRead, BufReader, Read};
 
 #[derive(Debug, Parser)]
 #[command(author, version, about)]
@@ -43,44 +43,42 @@ fn main() {
     }
 }
 
-// fn check_byte_optional(optional: Option<>) {
-//     match optional {
-//         Some(p) => p,
-//         None => nil,
-//     }
-// }
-
 fn run(args: Args) -> Result<()> {
-    dbg!(&args);
+    // dbg!(&args);
 
-    let show_header = args.files.len() > 1;
-    let via_bytes: bool = args.bytes.is_some();
+    let num_files = args.files.len();
 
-    // let option_byte = check_byte_optional(args.bytes);
-    for filename in args.files {
+    for (file_num,  filename) in args.files.iter().enumerate() {
         match open(&filename) {
             Err(err) => eprintln!("{filename}: {err}"),
-            Ok(file) => {
-                if show_header {
-                    println!("\n==> {filename} <==");
+            Ok(mut file) => {
+                 
+                if num_files > 1 {
+                    println!(
+                        "{}==> {filename} <==",
+                        if file_num > 0 { "\n" } else { "" }
+                    );
                 }
-                if via_bytes {
-                    const byte_limit: usize = 4;
-                    let mut buffer = [0; byte_limit];
-                    file.read_exact(&mut buffer)?;
-                    println!("{:#?}", buffer);
+                if let Some(num_bytes) = args.bytes {
+                    let mut buffer = vec![0; num_bytes as usize];
+                    let bytes_read = file.read(&mut buffer)?;
+                    print!(
+                        "{}",
+                        String::from_utf8_lossy(&buffer[..bytes_read])
+                    );
                 } else {
-                    let limit: usize = args.lines.try_into().unwrap();
-                    for (line_num, line_result) in file.lines().enumerate() {
-                        let line = line_result?;
-                        if limit <= line_num {
+                    let mut line = String::new();
+                    for _ in 0..args.lines {
+                        let bytes = file.read_line(&mut line)?;
+                        if bytes == 0 {
                             break;
                         }
-                        println!("{line}");
+                        print!("{line}");
+                        line.clear();
                     }
                 }
             },        
-        }
+        };
     }
     Ok(())
 }
